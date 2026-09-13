@@ -68,7 +68,10 @@ class _RankingScreenState extends State<RankingScreen> {
       physics: iosPhysics,
       slivers: [
         CupertinoSliverRefreshControl(onRefresh: _load),
-        const CupertinoSliverNavigationBar(largeTitle: Text('Populer')),
+        const CupertinoSliverNavigationBar(
+          transitionBetweenRoutes: false,
+          largeTitle: Text('Populer'),
+        ),
         if (_loading)
           SliverToBoxAdapter(
             child: Padding(

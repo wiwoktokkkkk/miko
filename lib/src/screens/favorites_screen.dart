@@ -29,7 +29,10 @@ class FavoritesScreen extends StatelessWidget {
           return CustomScrollView(
             physics: iosPhysics,
             slivers: [
-              const CupertinoSliverNavigationBar(largeTitle: Text('Favorit')),
+              const CupertinoSliverNavigationBar(
+                transitionBetweenRoutes: false,
+                largeTitle: Text('Favorit'),
+              ),
               if (history.isNotEmpty) ...[
                 const SliverToBoxAdapter(
                   child: SectionHeader(

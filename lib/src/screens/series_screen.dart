@@ -121,6 +121,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
         physics: iosPhysics,
         slivers: [
           CupertinoSliverNavigationBar(
+            transitionBetweenRoutes: false,
             middle: SizedBox(
               width: 180,
               child: Text(

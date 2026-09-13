@@ -109,7 +109,10 @@ class _SearchScreenState extends State<SearchScreen> {
       child: CustomScrollView(
         physics: iosPhysics,
         slivers: [
-          const CupertinoSliverNavigationBar(largeTitle: Text('Cari')),
+          const CupertinoSliverNavigationBar(
+            transitionBetweenRoutes: false,
+            largeTitle: Text('Cari'),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),

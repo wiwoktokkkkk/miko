@@ -24,6 +24,7 @@ class KomikuClient {
 
   final http.Client _http = http.Client();
   final Map<String, _CacheEntry> _cache = {};
+  final Map<String, Future<dynamic>> _inFlight = {};
 
   // ------------------------------------------------------------------
   // HTTP dasar + cache TTL
@@ -52,9 +53,21 @@ class KomikuClient {
     if (hit != null && now.difference(hit.time) < ttl) {
       return hit.value as T;
     }
-    final value = await loader();
-    _cache[key] = _CacheEntry(value, now);
-    return value;
+
+    // Beberapa card yang sama dapat meminta cover detail secara bersamaan.
+    // Pakai satu request jaringan dan bagikan hasilnya ke semua pemanggil.
+    final pending = _inFlight[key];
+    if (pending != null) return (await pending) as T;
+
+    final future = loader();
+    _inFlight[key] = future;
+    try {
+      final value = await future;
+      _cache[key] = _CacheEntry(value, DateTime.now());
+      return value;
+    } finally {
+      if (identical(_inFlight[key], future)) _inFlight.remove(key);
+    }
   }
 
   // ------------------------------------------------------------------

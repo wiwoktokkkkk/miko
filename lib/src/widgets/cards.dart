@@ -143,7 +143,8 @@ class HComicCard extends StatelessWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 3 / 4,
-                  child: CoverImage(
+                  child: SeriesCoverImage(
+                    slug: card.slug,
                     urls: Parser.coverCandidates(card.cover),
                     placeholderTitle: card.title,
                     radius: 12,
@@ -232,9 +233,10 @@ class BrowseRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 106,
-              height: 70,
-              child: CoverImage(
+              width: 82,
+              height: 110,
+              child: SeriesCoverImage(
+                slug: card.slug,
                 urls: Parser.coverCandidates(card.cover),
                 placeholderTitle: card.title,
                 radius: 10,

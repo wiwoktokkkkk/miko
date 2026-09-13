@@ -69,6 +69,7 @@ class _GenreFilterScreenState extends State<GenreFilterScreen> {
         physics: iosPhysics,
         slivers: [
           CupertinoSliverNavigationBar(
+            transitionBetweenRoutes: false,
             middle: const Text('Filter Genre'),
             trailing: current != null
                 ? CupertinoButton(

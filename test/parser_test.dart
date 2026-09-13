@@ -81,6 +81,36 @@ void main() {
     });
   });
 
+  group('Parser.isLandscapeCover', () {
+    test('mendeteksi resize lanskap dan nama horizontal', () {
+      expect(
+        Parser.isLandscapeCover(
+          'https://thumbnail.komiku.org/cover.jpg?resize=450,235',
+        ),
+        isTrue,
+      );
+      expect(
+        Parser.isLandscapeCover(
+          'https://thumbnail.komiku.org/manga_img_horizontal-X.png',
+        ),
+        isTrue,
+      );
+    });
+
+    test('tidak menandai thumbnail portrait', () {
+      expect(
+        Parser.isLandscapeCover(
+          'https://thumbnail.komiku.org/cover.jpg?resize=240,280',
+        ),
+        isFalse,
+      );
+      expect(
+        Parser.isLandscapeCover('https://thumbnail.komiku.org/cover.jpg?w=500'),
+        isFalse,
+      );
+    });
+  });
+
   group('Parser.chapterImageCandidates', () {
     test('menambahkan fallback img.komiku.org untuk CDN bernomor', () {
       final candidates = Parser.chapterImageCandidates(

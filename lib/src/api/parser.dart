@@ -64,6 +64,25 @@ class Parser {
         .replaceAll('&#038;', '&');
   }
 
+  /// Apakah thumbnail berasal dari varian lanskap milik daftar Komiku.
+  /// Thumbnail seperti ini tidak boleh langsung di-crop ke kotak poster karena
+  /// hasilnya terlihat sangat zoom. UI dapat mengambil cover portrait detail.
+  static bool isLandscapeCover(String? url) {
+    final raw = (url ?? '').replaceAll('&#038;', '&');
+    if (raw.isEmpty) return false;
+    final lower = raw.toLowerCase();
+    if (lower.contains('horizontal')) return true;
+
+    final uri = Uri.tryParse(raw);
+    final resize = uri?.queryParameters['resize'];
+    if (resize == null) return false;
+    final size = resize.split(',');
+    if (size.length != 2) return false;
+    final width = double.tryParse(size[0]);
+    final height = double.tryParse(size[1]);
+    return width != null && height != null && width > height;
+  }
+
   /// Kandidat URL cover: prefer URL hasil parser, lalu host alternatif.
   static List<String> coverCandidates(String? url) {
     final raw = (url ?? '').replaceAll('&#038;', '&');

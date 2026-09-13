@@ -72,7 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
       physics: iosPhysics,
       slivers: [
         CupertinoSliverRefreshControl(onRefresh: _load),
-        const CupertinoSliverNavigationBar(largeTitle: Text('Beranda')),
+        const CupertinoSliverNavigationBar(
+          transitionBetweenRoutes: false,
+          largeTitle: Text('Beranda'),
+        ),
         if (_loading)
           ..._loadingSlivers
         else if (_data == null)

@@ -230,7 +230,10 @@ class BrowseScreenState extends State<BrowseScreen> {
       physics: iosPhysics,
       slivers: [
         CupertinoSliverRefreshControl(onRefresh: () async => _reload()),
-        const CupertinoSliverNavigationBar(largeTitle: Text('Jelajah')),
+        const CupertinoSliverNavigationBar(
+          transitionBetweenRoutes: false,
+          largeTitle: Text('Jelajah'),
+        ),
         SliverToBoxAdapter(
           child: SizedBox(
             height: 44,

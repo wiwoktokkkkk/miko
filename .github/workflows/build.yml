@@ -36,6 +36,22 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Configure release signing
+        if: github.event_name != 'pull_request'
+        env:
+          MIKO_SIGNING_KEY_BASE64: ${{ secrets.MIKO_SIGNING_KEY_BASE64 }}
+          MIKO_STORE_PASSWORD: ${{ secrets.MIKO_STORE_PASSWORD }}
+          MIKO_KEY_PASSWORD: ${{ secrets.MIKO_KEY_PASSWORD }}
+          MIKO_KEY_ALIAS: ${{ secrets.MIKO_KEY_ALIAS }}
+        run: |
+          printf '%s' "$MIKO_SIGNING_KEY_BASE64" | base64 --decode > android/app/miko-release.jks
+          cat > android/key.properties <<EOF
+          storePassword=$MIKO_STORE_PASSWORD
+          keyPassword=$MIKO_KEY_PASSWORD
+          keyAlias=$MIKO_KEY_ALIAS
+          storeFile=miko-release.jks
+          EOF
+
       - name: Build release APK
         run: flutter build apk --release --target-platform android-arm64
 

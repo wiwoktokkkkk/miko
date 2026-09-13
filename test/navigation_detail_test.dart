@@ -92,6 +92,8 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(SeriesScreen), findsOneWidget);
+    expect(find.byType(CupertinoNavigationBar), findsOneWidget);
+    expect(find.byType(CupertinoSliverNavigationBar), findsNothing);
     final route =
         ModalRoute.of(tester.element(find.byType(SeriesScreen)))!
             as PageRoute<dynamic>;

@@ -13,12 +13,17 @@ import '../widgets/cover_image.dart';
 import 'reader_screen.dart';
 
 /// Halaman detail series: info, sinopsis, daftar chapter.
+///
+/// Halaman ini sengaja tidak memakai sliver. Pada beberapa perangkat Android,
+/// exception di dalam sliver sebelumnya diganti Flutter dengan RenderErrorBox,
+/// lalu gagal lagi karena viewport mengharapkan RenderSliver. ListView biasa
+/// menghindari jalur error tersebut dan tetap membangun chapter secara lazy.
 class SeriesScreen extends StatefulWidget {
   const SeriesScreen({super.key, required this.slug, this.initial});
 
   final String slug;
 
-  /// Card awal (dari grid) untuk menampilkan cover/judul lebih cepat.
+  /// Card awal untuk menampilkan judul ketika detail masih dimuat.
   final ComicCard? initial;
 
   @override
@@ -28,7 +33,7 @@ class SeriesScreen extends StatefulWidget {
 class _SeriesScreenState extends State<SeriesScreen> {
   final KomikuClient _client = KomikuClient.instance;
   final AppStore _store = AppStore.instance;
-  final _chQuery = TextEditingController();
+  final TextEditingController _chQuery = TextEditingController();
 
   SeriesInfo? _info;
   Object? _error;
@@ -75,8 +80,8 @@ class _SeriesScreenState extends State<SeriesScreen> {
   }
 
   void _openReader(int index) {
-    final info = _info!;
-    if (index < 0 || index >= info.chapters.length) return;
+    final info = _info;
+    if (info == null || index < 0 || index >= info.chapters.length) return;
     Navigator.of(context).push(
       mikoRoute(
         builder: (_) => ReaderScreen(series: info, index: index),
@@ -86,26 +91,24 @@ class _SeriesScreenState extends State<SeriesScreen> {
 
   void _toggleFav() {
     final info = _info;
-    if (info == null) return;
-    _store.toggleFav(info);
+    if (info != null) _store.toggleFav(info);
   }
 
-  /// Indeks chapter terakhir yang dibaca (bila ada di riwayat).
   int? get _resumeIndex {
     final info = _info;
     if (info == null) return null;
-    final h = _store.historyFor(info.slug);
-    if (h == null) return null;
-    return info.chapters.indexWhere((c) => c.slug == h.chapterSlug);
+    final history = _store.historyFor(info.slug);
+    if (history == null) return null;
+    return info.chapters.indexWhere((c) => c.slug == history.chapterSlug);
   }
 
-  List<Chapter> get _chapters {
+  List<Chapter> get _visibleChapters {
     final info = _info;
     if (info == null) return const [];
-    final q = _chQuery.text.trim().toLowerCase();
-    if (q.isEmpty) return info.chapters;
+    final query = _chQuery.text.trim().toLowerCase();
+    if (query.isEmpty) return info.chapters;
     return info.chapters
-        .where((c) => c.label.toLowerCase().contains(q))
+        .where((chapter) => chapter.label.toLowerCase().contains(query))
         .toList();
   }
 
@@ -113,348 +116,409 @@ class _SeriesScreenState extends State<SeriesScreen> {
   Widget build(BuildContext context) {
     final ctx = Ctx(context);
     final info = _info;
-    final initial = widget.initial;
-    final title = info?.title ?? initial?.title ?? '';
+    final title = info?.title ?? widget.initial?.title ?? '';
 
     return CupertinoPageScaffold(
       backgroundColor: ctx.bg,
-      child: CustomScrollView(
-        physics: iosPhysics,
-        slivers: [
-          CupertinoSliverNavigationBar(
-            transitionBetweenRoutes: false,
-            middle: SizedBox(
-              width: 180,
-              child: Text(
-                title.isEmpty ? 'Detail' : title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: ctx.text,
-                ),
-              ),
-            ),
-            trailing: info == null
-                ? null
-                : ListenableBuilder(
-                    listenable: _store,
-                    builder: (context, _) => CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: _toggleFav,
-                      child: Icon(
-                        _store.isFav(info.slug)
-                            ? CupertinoIcons.heart_fill
-                            : CupertinoIcons.heart,
-                        size: 20,
-                        color: _store.isFav(info.slug)
-                            ? AppColors.red
-                            : ctx.text,
-                      ),
-                    ),
-                  ),
+      navigationBar: CupertinoNavigationBar(
+        transitionBetweenRoutes: false,
+        middle: Text(
+          title.isEmpty ? 'Detail Komik' : title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: ctx.text,
           ),
-          if (_loading)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Shimmer(width: 108, height: 144, radius: 14),
-                    SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Shimmer(height: 18, radius: 4),
-                          SizedBox(height: 8),
-                          Shimmer(height: 18, width: 140, radius: 4),
-                          SizedBox(height: 10),
-                          Shimmer(height: 12, width: 200, radius: 4),
-                        ],
-                      ),
-                    ),
-                  ],
+        ),
+        trailing: info == null
+            ? null
+            : ListenableBuilder(
+                listenable: _store,
+                builder: (context, _) => CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(40, 40),
+                  onPressed: _toggleFav,
+                  child: Icon(
+                    _store.isFav(info.slug)
+                        ? CupertinoIcons.heart_fill
+                        : CupertinoIcons.heart,
+                    size: 20,
+                    color: _store.isFav(info.slug) ? AppColors.red : ctx.text,
+                  ),
                 ),
               ),
-            )
-          else if (info == null)
-            SliverFillRemaining(
-              child: EmptyState(
-                icon: CupertinoIcons.book,
-                title: 'Detail tidak ditemukan',
-                subtitle:
-                    'Periksa koneksi internet lalu coba lagi.\n${errorDetail(_error)}',
-                onRetry: _load,
-              ),
-            )
-          else ...[
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 108,
-                      height: 144,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: ctx.dark ? 0.4 : 0.15,
-                            ),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: CoverImage(
-                        urls: Parser.coverCandidates(info.cover),
-                        placeholderTitle: info.title,
-                        radius: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            info.title,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              height: 1.3,
-                              color: ctx.text,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              if (info.status.isNotEmpty)
-                                MiniTag(label: info.status, color: ctx.muted),
-                              if (info.rating.isNotEmpty)
-                                MiniTag(label: info.rating, color: ctx.muted),
-                              MiniTag(
-                                label: '${info.chapters.length} chapter',
-                                color: ctx.muted,
-                              ),
-                            ],
-                          ),
-                          if (info.genres.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                for (final g in info.genres.take(4))
-                                  MiniTag(label: g),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: _loading
+            ? _LoadingDetail(ctx: ctx)
+            : info == null
+            ? _DetailError(error: _error, onRetry: _load)
+            : _buildDetail(ctx, info),
+      ),
+    );
+  }
+
+  Widget _buildDetail(Ctx ctx, SeriesInfo info) {
+    final chapters = _visibleChapters;
+    final hasChapter = info.chapters.isNotEmpty;
+
+    return ListView.builder(
+      physics: iosPhysics,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+      itemCount: 1 + (chapters.isEmpty ? 1 : chapters.length),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return _DetailOverview(
+            info: info,
+            queryController: _chQuery,
+            fullSynopsis: _fullSyn,
+            visibleChapterCount: chapters.length,
+            resumeIndex: _resumeIndex,
+            onToggleSynopsis: () => setState(() => _fullSyn = !_fullSyn),
+            onReadLatest: hasChapter
+                ? () {
+                    final resume = _resumeIndex;
+                    _openReader(resume != null && resume >= 0 ? resume : 0);
+                  }
+                : null,
+            onReadFirst: hasChapter
+                ? () => _openReader(info.chapters.length - 1)
+                : null,
+          );
+        }
+
+        if (chapters.isEmpty) {
+          return _NoChapterResult(hasQuery: _chQuery.text.trim().isNotEmpty);
+        }
+
+        final chapter = chapters[index - 1];
+        return _ChapterRow(
+          chapter: chapter,
+          onTap: () => _openReader(info.chapters.indexOf(chapter)),
+        );
+      },
+    );
+  }
+}
+
+class _LoadingDetail extends StatelessWidget {
+  const _LoadingDetail({required this.ctx});
+
+  final Ctx ctx;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: iosPhysics,
+      padding: const EdgeInsets.all(16),
+      children: const [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Shimmer(width: 108, height: 144, radius: 14),
+            SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Shimmer(height: 18, radius: 4),
+                  SizedBox(height: 8),
+                  Shimmer(height: 18, width: 140, radius: 4),
+                  SizedBox(height: 10),
+                  Shimmer(height: 12, width: 180, radius: 4),
+                ],
               ),
             ),
-            if (info.synopsis.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sinopsis',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: ctx.text,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        info.synopsis,
-                        maxLines: _fullSyn ? null : 4,
-                        overflow: _fullSyn ? null : TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.5,
-                          color: ctx.text.withValues(
-                            alpha: ctx.dark ? 0.8 : 0.75,
-                          ),
-                        ),
-                      ),
-                      if (info.synopsis.length > 220)
-                        CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          child: Text(
-                            _fullSyn ? 'Sembunyikan' : 'Lihat Selengkapnya',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: ctx.accent,
-                            ),
-                          ),
-                          onPressed: () => setState(() => _fullSyn = !_fullSyn),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-                child: Column(
-                  children: [
-                    if (info.chapters.isNotEmpty) ...[
-                      CupertinoButton.filled(
-                        color: ctx.accent,
-                        onPressed: () {
-                          final ri = _resumeIndex;
-                          _openReader(ri != null && ri >= 0 ? ri : 0);
-                        },
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        child: Text(
-                          _resumeIndex != null && _resumeIndex! >= 0
-                              ? 'Lanjutkan ${info.chapters[_resumeIndex!].label}'
-                              : 'Baca Chapter Terbaru',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      CupertinoButton.filled(
-                        color: ctx.surface,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(
-                          'Mulai dari Awal',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: ctx.accent,
-                          ),
-                        ),
-                        onPressed: () => _openReader(info.chapters.length - 1),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            if (info.chapters.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Daftar Chapter',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: ctx.text,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '(${_chapters.length})',
-                        style: TextStyle(fontSize: 14, color: ctx.muted),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: CupertinoTextField(
-                    controller: _chQuery,
-                    placeholder: 'Cari chapter…',
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 10, top: 10),
-                      child: Icon(
-                        CupertinoIcons.search,
-                        size: 14,
-                        color: CupertinoColors.systemGrey,
-                      ),
-                    ),
-                    suffix: _chQuery.text.isEmpty
-                        ? null
-                        : CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            child: const Icon(
-                              CupertinoIcons.xmark_circle_fill,
-                              size: 15,
-                              color: CupertinoColors.systemGrey,
-                            ),
-                            onPressed: () => _chQuery.clear(),
-                          ),
-                    decoration: BoxDecoration(
-                      color: ctx.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: ctx.separator.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                sliver: _chapters.isEmpty
-                    ? SliverToBoxAdapter(
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: ctx.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: ctx.separator.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          child: Text(
-                            'Chapter tidak ditemukan',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, color: ctx.muted),
-                          ),
-                        ),
-                      )
-                    : SliverList(
-                        delegate: SliverChildBuilderDelegate((context, i) {
-                          final chapter = _chapters[i];
-                          return _ChapterRow(
-                            chapter: chapter,
-                            onTap: () =>
-                                _openReader(info.chapters.indexOf(chapter)),
-                          );
-                        }, childCount: _chapters.length),
-                      ),
-              ),
-            ],
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailError extends StatelessWidget {
+  const _DetailError({required this.error, required this.onRetry});
+
+  final Object? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: iosPhysics,
+      children: [
+        const SizedBox(height: 80),
+        EmptyState(
+          icon: CupertinoIcons.book,
+          title: 'Detail tidak ditemukan',
+          subtitle:
+              'Periksa koneksi internet lalu coba lagi.\n${errorDetail(error)}',
+          onRetry: onRetry,
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailOverview extends StatelessWidget {
+  const _DetailOverview({
+    required this.info,
+    required this.queryController,
+    required this.fullSynopsis,
+    required this.visibleChapterCount,
+    required this.resumeIndex,
+    required this.onToggleSynopsis,
+    required this.onReadLatest,
+    required this.onReadFirst,
+  });
+
+  final SeriesInfo info;
+  final TextEditingController queryController;
+  final bool fullSynopsis;
+  final int visibleChapterCount;
+  final int? resumeIndex;
+  final VoidCallback onToggleSynopsis;
+  final VoidCallback? onReadLatest;
+  final VoidCallback? onReadFirst;
+
+  @override
+  Widget build(BuildContext context) {
+    final ctx = Ctx(context);
+    final canResume =
+        resumeIndex != null &&
+        resumeIndex! >= 0 &&
+        resumeIndex! < info.chapters.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 108,
+              height: 144,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: ctx.dark ? 0.4 : 0.15,
+                    ),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: CoverImage(
+                urls: Parser.coverCandidates(info.cover),
+                placeholderTitle: info.title,
+                radius: 14,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    info.title,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                      color: ctx.text,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (info.status.isNotEmpty)
+                        MiniTag(label: info.status, color: ctx.muted),
+                      if (info.rating.isNotEmpty)
+                        MiniTag(label: info.rating, color: ctx.muted),
+                      MiniTag(
+                        label: '${info.chapters.length} chapter',
+                        color: ctx.muted,
+                      ),
+                    ],
+                  ),
+                  if (info.genres.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final genre in info.genres.take(4))
+                          MiniTag(label: genre),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (info.synopsis.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Sinopsis',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: ctx.text,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            info.synopsis,
+            maxLines: fullSynopsis ? null : 4,
+            overflow: fullSynopsis ? null : TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: ctx.text.withValues(alpha: ctx.dark ? 0.8 : 0.75),
+            ),
+          ),
+          if (info.synopsis.length > 220)
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: onToggleSynopsis,
+              child: Text(
+                fullSynopsis ? 'Sembunyikan' : 'Lihat Selengkapnya',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: ctx.accent,
+                ),
+              ),
+            ),
         ],
+        if (onReadLatest != null) ...[
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: CupertinoButton.filled(
+              color: ctx.accent,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              onPressed: onReadLatest,
+              child: Text(
+                canResume
+                    ? 'Lanjutkan ${info.chapters[resumeIndex!].label}'
+                    : 'Baca Chapter Terbaru',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: CupertinoButton.filled(
+              color: ctx.surface,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              onPressed: onReadFirst,
+              child: Text(
+                'Mulai dari Awal',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: ctx.accent,
+                ),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Text(
+              'Daftar Chapter',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: ctx.text,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '($visibleChapterCount)',
+              style: TextStyle(fontSize: 14, color: ctx.muted),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        CupertinoTextField(
+          controller: queryController,
+          placeholder: 'Cari chapter…',
+          prefix: const Padding(
+            padding: EdgeInsets.only(left: 10),
+            child: Icon(
+              CupertinoIcons.search,
+              size: 14,
+              color: CupertinoColors.systemGrey,
+            ),
+          ),
+          suffix: queryController.text.isEmpty
+              ? null
+              : CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(40, 40),
+                  onPressed: queryController.clear,
+                  child: const Icon(
+                    CupertinoIcons.xmark_circle_fill,
+                    size: 15,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                ),
+          decoration: BoxDecoration(
+            color: ctx.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: ctx.separator.withValues(alpha: 0.8)),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+class _NoChapterResult extends StatelessWidget {
+  const _NoChapterResult({required this.hasQuery});
+
+  final bool hasQuery;
+
+  @override
+  Widget build(BuildContext context) {
+    final ctx = Ctx(context);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ctx.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: ctx.separator.withValues(alpha: 0.8)),
+      ),
+      child: Text(
+        hasQuery
+            ? 'Chapter tidak cocok dengan pencarian'
+            : 'Chapter tidak ditemukan',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 13, color: ctx.muted),
       ),
     );
   }
 }
 
-/// Satu chapter sebagai card terpisah agar [SliverList] dapat membangun item
-/// hanya saat terlihat. Halaman dengan ratusan chapter tidak lagi membuat semua
-/// baris sekaligus ketika detail baru dibuka.
 class _ChapterRow extends StatelessWidget {
   const _ChapterRow({required this.chapter, required this.onTap});
 

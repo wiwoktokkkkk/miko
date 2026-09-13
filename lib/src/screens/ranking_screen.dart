@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../api/client.dart';
 import '../models.dart';
+import '../navigation/app_route.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cards.dart';
 import '../widgets/common.dart';
@@ -48,7 +49,7 @@ class _RankingScreenState extends State<RankingScreen> {
 
   void _openSeries(ComicCard c) {
     Navigator.of(context).push(
-      CupertinoPageRoute(
+      mikoRoute(
         builder: (_) => SeriesScreen(slug: c.slug, initial: c),
       ),
     );

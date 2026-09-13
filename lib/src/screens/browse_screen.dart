@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../api/client.dart';
 import '../models.dart';
+import '../navigation/app_route.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cards.dart';
 import '../widgets/common.dart';
@@ -114,14 +115,22 @@ class BrowseScreenState extends State<BrowseScreen> {
   }
 
   void _openSeries(BrowseCard c) {
-    Navigator.of(
-      context,
-    ).push(CupertinoPageRoute(builder: (_) => SeriesScreen(slug: c.slug)));
+    final initial = ComicCard(
+      slug: c.slug,
+      title: c.title,
+      cover: c.cover,
+      lastChapterSlug: c.lastChapterSlug,
+    );
+    Navigator.of(context).push(
+      mikoRoute(
+        builder: (_) => SeriesScreen(slug: c.slug, initial: initial),
+      ),
+    );
   }
 
   Future<void> _pickGenre() async {
     final result = await Navigator.of(context).push<Object>(
-      CupertinoPageRoute(builder: (_) => GenreFilterScreen(current: _genre)),
+      mikoRoute(builder: (_) => GenreFilterScreen(current: _genre)),
     );
     if (!mounted || result == null) return;
     if (result is GenreNone) {

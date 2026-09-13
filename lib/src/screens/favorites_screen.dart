@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../api/client.dart';
 import '../api/parser.dart';
 import '../models.dart';
+import '../navigation/app_route.dart';
 import '../state/app_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cards.dart';
@@ -102,8 +103,15 @@ class FavoritesScreen extends StatelessWidget {
                       return _FavTile(
                         entry: entry,
                         onTap: () => Navigator.of(context).push(
-                          CupertinoPageRoute(
-                            builder: (_) => SeriesScreen(slug: entry.slug),
+                          mikoRoute(
+                            builder: (_) => SeriesScreen(
+                              slug: entry.slug,
+                              initial: ComicCard(
+                                slug: entry.slug,
+                                title: entry.title,
+                                cover: entry.cover,
+                              ),
+                            ),
                           ),
                         ),
                       );
@@ -131,7 +139,7 @@ class FavoritesScreen extends StatelessWidget {
       var idx = series.chapters.indexWhere((c) => c.slug == item.chapterSlug);
       if (idx < 0) idx = 0;
       Navigator.of(context).push(
-        CupertinoPageRoute(
+        mikoRoute(
           builder: (_) => ReaderScreen(series: series, index: idx),
         ),
       );

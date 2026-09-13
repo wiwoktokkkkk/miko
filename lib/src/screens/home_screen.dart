@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../api/client.dart';
 import '../models.dart';
+import '../navigation/app_route.dart';
 import '../state/app_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cards.dart';
@@ -60,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openSeries(ComicCard c) {
     Navigator.of(context).push(
-      CupertinoPageRoute(
+      mikoRoute(
         builder: (_) => SeriesScreen(slug: c.slug, initial: c),
       ),
     );
@@ -386,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
       var idx = series.chapters.indexWhere((c) => c.slug == item.chapterSlug);
       if (idx < 0) idx = 0;
       Navigator.of(context).push(
-        CupertinoPageRoute(
+        mikoRoute(
           builder: (_) => ReaderScreen(series: series, index: idx),
         ),
       );

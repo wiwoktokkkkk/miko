@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import '../api/client.dart';
 import '../api/parser.dart';
 import '../models.dart';
+import '../navigation/app_route.dart';
 import '../state/app_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
@@ -77,7 +78,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
     final info = _info!;
     if (index < 0 || index >= info.chapters.length) return;
     Navigator.of(context).push(
-      CupertinoPageRoute(
+      mikoRoute(
         builder: (_) => ReaderScreen(series: info, index: index),
       ),
     );
@@ -412,97 +413,102 @@ class _SeriesScreenState extends State<SeriesScreen> {
                   ),
                 ),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: ctx.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: ctx.separator.withValues(alpha: 0.8),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                sliver: _chapters.isEmpty
+                    ? SliverToBoxAdapter(
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: ctx.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: ctx.separator.withValues(alpha: 0.8),
+                            ),
+                          ),
+                          child: Text(
+                            'Chapter tidak ditemukan',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, color: ctx.muted),
+                          ),
+                        ),
+                      )
+                    : SliverList(
+                        delegate: SliverChildBuilderDelegate((context, i) {
+                          final chapter = _chapters[i];
+                          return _ChapterRow(
+                            chapter: chapter,
+                            onTap: () =>
+                                _openReader(info.chapters.indexOf(chapter)),
+                          );
+                        }, childCount: _chapters.length),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        if (_chapters.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Text(
-                              'Chapter tidak ditemukan',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 13, color: ctx.muted),
-                            ),
-                          )
-                        else
-                          for (var i = 0; i < _chapters.length; i++) ...[
-                            if (i > 0)
-                              Container(
-                                height: 0.6,
-                                margin: const EdgeInsets.only(left: 14),
-                                color: ctx.separator,
-                              ),
-                            GestureDetector(
-                              onTap: () => _openReader(
-                                info.chapters.indexOf(_chapters[i]),
-                              ),
-                              behavior: HitTestBehavior.opaque,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 11,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _chapters[i].label,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: ctx.text,
-                                            ),
-                                          ),
-                                          if (_chapters[i].date.isNotEmpty)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 2,
-                                              ),
-                                              child: Text(
-                                                _chapters[i].date,
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: ctx.muted,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(
-                                      CupertinoIcons.chevron_compact_right,
-                                      size: 11,
-                                      color: ctx.muted.withValues(alpha: 0.7),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                      ],
-                    ),
-                  ),
-                ),
               ),
             ],
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Satu chapter sebagai card terpisah agar [SliverList] dapat membangun item
+/// hanya saat terlihat. Halaman dengan ratusan chapter tidak lagi membuat semua
+/// baris sekaligus ketika detail baru dibuka.
+class _ChapterRow extends StatelessWidget {
+  const _ChapterRow({required this.chapter, required this.onTap});
+
+  final Chapter chapter;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ctx = Ctx(context);
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: ctx.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: ctx.separator.withValues(alpha: 0.8)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    chapter.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: ctx.text,
+                    ),
+                  ),
+                  if (chapter.date.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        chapter.date,
+                        style: TextStyle(fontSize: 11, color: ctx.muted),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Icon(
+              CupertinoIcons.chevron_compact_right,
+              size: 11,
+              color: ctx.muted.withValues(alpha: 0.7),
+            ),
+          ],
+        ),
       ),
     );
   }

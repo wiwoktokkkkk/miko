@@ -132,13 +132,13 @@ class FavoritesScreen extends StatelessWidget {
           builder: (_) => ReaderScreen(series: series, index: idx),
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!context.mounted) return;
       showCupertinoDialog(
         context: context,
         builder: (_) => CupertinoAlertDialog(
           title: const Text('Gagal membuka'),
-          content: const Text('Periksa koneksi internet lalu coba lagi.'),
+          content: Text('Periksa koneksi internet lalu coba lagi.\n$e'),
           actions: [
             CupertinoDialogAction(
               child: const Text('OK'),

@@ -30,6 +30,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
   final _chQuery = TextEditingController();
 
   SeriesInfo? _info;
+  Object? _error;
   bool _loading = true;
   bool _fullSyn = false;
 
@@ -53,9 +54,10 @@ class _SeriesScreenState extends State<SeriesScreen> {
         _info = info;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
+        _error = e;
         _loading = false;
       });
     }
@@ -172,7 +174,8 @@ class _SeriesScreenState extends State<SeriesScreen> {
               child: EmptyState(
                 icon: CupertinoIcons.book,
                 title: 'Detail tidak ditemukan',
-                subtitle: 'Periksa koneksi internet lalu coba lagi.',
+                subtitle:
+                    'Periksa koneksi internet lalu coba lagi.\n${errorDetail(_error)}',
                 onRetry: _load,
               ),
             )

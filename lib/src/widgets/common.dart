@@ -333,6 +333,12 @@ String initialOf(String s) {
   return String.fromCharCode(t.runes.first).toUpperCase();
 }
 
+/// Ringkasan pesan error untuk ditampilkan ke user.
+String errorDetail(Object? e) {
+  final t = e.toString().trim();
+  return t.length > 110 ? '${t.substring(0, 110)}…' : t;
+}
+
 /// Waktu relatif ringkas.
 String relativeTime(DateTime t) {
   final diff = DateTime.now().difference(t);

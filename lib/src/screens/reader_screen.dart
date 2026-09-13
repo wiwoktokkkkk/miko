@@ -222,10 +222,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Periksa koneksi internet lalu coba lagi.',
+                    'Periksa koneksi internet lalu coba lagi.\n${errorDetail(_error)}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Colors.white.withValues(alpha: 0.55),
                     ),
                   ),

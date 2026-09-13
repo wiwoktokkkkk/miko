@@ -91,7 +91,7 @@ class _RankingScreenState extends State<RankingScreen> {
               title: 'Peringkat tidak tersedia',
               subtitle: _error == null
                   ? 'Coba muat ulang.'
-                  : 'Periksa koneksi internet lalu coba lagi.',
+                  : 'Periksa koneksi internet lalu coba lagi.\n${errorDetail(_error)}',
               onRetry: _load,
             ),
           )

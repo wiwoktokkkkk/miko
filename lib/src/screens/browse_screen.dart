@@ -302,7 +302,8 @@ class BrowseScreenState extends State<BrowseScreen> {
             child: EmptyState(
               icon: CupertinoIcons.square_grid_2x2,
               title: 'Gagal memuat katalog',
-              subtitle: 'Periksa koneksi internet lalu coba lagi.',
+              subtitle:
+                  'Periksa koneksi internet lalu coba lagi.\n${errorDetail(_error)}',
               onRetry: _reload,
             ),
           )

@@ -150,7 +150,8 @@ class _SearchScreenState extends State<SearchScreen> {
               child: EmptyState(
                 icon: CupertinoIcons.search,
                 title: 'Pencarian gagal',
-                subtitle: 'Periksa koneksi internet lalu coba lagi.',
+                subtitle:
+                    'Periksa koneksi internet lalu coba lagi.\n${errorDetail(_error)}',
                 onRetry: () => _search(_lastQuery),
               ),
             )

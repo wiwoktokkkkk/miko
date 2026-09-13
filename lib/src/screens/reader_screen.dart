@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import '../widgets/common.dart';
 
 import '../api/client.dart';
+import '../api/parser.dart';
 import '../models.dart';
 import '../state/app_store.dart';
 import '../theme/app_theme.dart';
@@ -154,27 +155,37 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     child: _buildList(pages),
                   ),
           ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
-              opacity: _barsVisible ? 1 : 0,
-              child: AnimatedSlide(
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              ignoring: !_barsVisible,
+              child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
-                offset: _barsVisible ? Offset.zero : const Offset(0, -1.4),
-                child: _topBar(),
+                opacity: _barsVisible ? 1 : 0,
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 200),
+                  offset: _barsVisible ? Offset.zero : const Offset(0, -1.2),
+                  child: SafeArea(bottom: false, child: _topBar()),
+                ),
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
-              opacity: _barsVisible ? 1 : 0,
-              child: AnimatedSlide(
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              ignoring: !_barsVisible,
+              child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
-                offset: _barsVisible ? Offset.zero : const Offset(0, 1.4),
-                child: _bottomBar(),
+                opacity: _barsVisible ? 1 : 0,
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 200),
+                  offset: _barsVisible ? Offset.zero : const Offset(0, 1.2),
+                  child: SafeArea(top: false, child: _bottomBar()),
+                ),
               ),
             ),
           ),
@@ -406,34 +417,34 @@ class _ReaderScreenState extends State<ReaderScreen> {
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 150),
           opacity: enabled ? 1 : 0.35,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (iconFirst) ...[
-                  Icon(icon, size: 13, color: Colors.white),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+          child: SizedBox(
+            height: 44,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (iconFirst) ...[
+                    Icon(icon, size: 13, color: Colors.white),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                if (!iconFirst) ...[
-                  const SizedBox(width: 6),
-                  Icon(icon, size: 13, color: Colors.white),
+                  if (!iconFirst) ...[
+                    const SizedBox(width: 6),
+                    Icon(icon, size: 13, color: Colors.white),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -453,17 +464,49 @@ class _PageImage extends StatefulWidget {
 }
 
 class _PageImageState extends State<_PageImage> {
+  int _candidateIndex = 0;
   bool _failed = false;
+
+  List<String> get _candidates => Parser.chapterImageCandidates(widget.url);
+
+  @override
+  void didUpdateWidget(covariant _PageImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _candidateIndex = 0;
+      _failed = false;
+    }
+  }
+
+  void _retry() {
+    setState(() {
+      _candidateIndex = 0;
+      _failed = false;
+    });
+  }
+
+  void _onImageError() {
+    final next = _candidateIndex + 1;
+    Future.microtask(() {
+      if (!mounted) return;
+      if (next < _candidates.length) {
+        setState(() => _candidateIndex = next);
+      } else if (!_failed) {
+        setState(() => _failed = true);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final candidates = _candidates;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      child: _failed
-          ? _ErrorTile(onRetry: () => setState(() => _failed = false))
+      child: candidates.isEmpty || _failed
+          ? _ErrorTile(onRetry: _retry)
           : CachedNetworkImage(
-              key: ValueKey(widget.url),
-              imageUrl: widget.url,
+              key: ValueKey(candidates[_candidateIndex]),
+              imageUrl: candidates[_candidateIndex],
               httpHeaders: KomikuClient.httpHeaders,
               fit: BoxFit.fitWidth,
               width: double.infinity,
@@ -474,11 +517,12 @@ class _PageImageState extends State<_PageImage> {
                 child: const CupertinoActivityIndicator(),
               ),
               errorWidget: (context, url, err) {
-                Future.microtask(() {
-                  if (mounted && !_failed) setState(() => _failed = true);
-                });
-                return _ErrorTile(
-                  onRetry: () => setState(() => _failed = false),
+                _onImageError();
+                return Container(
+                  color: Colors.black,
+                  height: 420,
+                  alignment: Alignment.center,
+                  child: const CupertinoActivityIndicator(),
                 );
               },
             ),

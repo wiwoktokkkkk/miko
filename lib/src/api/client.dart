@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 
 import '../models.dart';
@@ -117,15 +115,18 @@ class KomikuClient {
   );
 
   // ------------------------------------------------------------------
-  // Pencarian
+  // Pencarian judul komik
   // ------------------------------------------------------------------
-  Future<List<SearchResult>> search(String q) {
+  Future<List<BrowseCard>> search(String q) {
     final kw = q.trim();
-    return cached('search:$kw', () async {
-      final raw = await _get(
-        '$base/wp-json/wp/v2/search?search=${Uri.encodeQueryComponent(kw)}&per_page=24',
-      );
-      return Parser.parseSearch(jsonDecode(raw) as List<dynamic>);
+    return cached('search-comics:$kw', () async {
+      // Endpoint katalog hanya mengembalikan series. Endpoint wp-json/search
+      // umum sengaja tidak dipakai karena hasil teratasnya didominasi chapter.
+      final params = Uri(
+        queryParameters: {'post_type': 'manga', 's': kw},
+      ).query;
+      final raw = await _get('$apiBase/?$params');
+      return Parser.parseBrowse(raw).cards;
     }, ttl: const Duration(minutes: 5));
   }
 

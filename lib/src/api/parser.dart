@@ -13,8 +13,10 @@ class Parser {
   static final RegExp _slug = RegExp(
     r'href="/((?:manga|manhua|manhwa)/[a-z0-9\-]+)/"',
   );
+  // Katalog utama memakai URL absolut, sedangkan endpoint pencarian memakai
+  // URL relatif. Terima keduanya agar card series tidak hilang dari hasil.
   static final RegExp _slugApi = RegExp(
-    r'href="https?://komiku\.org/((?:manga|manhua|manhwa)/[a-z0-9\-]+)/"',
+    r'href="(?:https?://(?:www\.)?komiku\.org)?/((?:manga|manhua|manhwa)/[a-z0-9\-]+)/"',
   );
   static final RegExp _chHref = RegExp(
     r'href="/([a-z0-9\-]+-chapter-[\d\.]+)/"',
@@ -62,7 +64,7 @@ class Parser {
         .replaceAll('&#038;', '&');
   }
 
-  /// Kandidat URL cover: prefer host .org, fallback .to.
+  /// Kandidat URL cover: prefer URL hasil parser, lalu host alternatif.
   static List<String> coverCandidates(String? url) {
     final raw = (url ?? '').replaceAll('&#038;', '&');
     if (raw.isEmpty) return const [];
@@ -71,6 +73,24 @@ class Parser {
       out.add(raw.replaceFirst('thumbnail.komiku.to', 'thumbnail.komiku.org'));
     } else if (raw.contains('thumbnail.komiku.org')) {
       out.add(raw.replaceFirst('thumbnail.komiku.org', 'thumbnail.komiku.to'));
+    }
+    return out;
+  }
+
+  /// Kandidat host untuk satu halaman reader.
+  ///
+  /// Situs Komiku sendiri mengganti `imageN.komiku.to` ke `img.komiku.org`
+  /// saat CDN bernomor gagal. Reader meniru fallback tersebut agar halaman
+  /// tidak berubah menjadi layar kosong pada jaringan/perangkat tertentu.
+  static List<String> chapterImageCandidates(String url) {
+    final raw = clean(url).replaceAll('&amp;', '&');
+    if (raw.isEmpty) return const [];
+    final out = <String>[raw];
+    final uri = Uri.tryParse(raw);
+    final host = uri?.host ?? '';
+    if (RegExp(r'^image\d+\.komiku\.(?:to|org|com)$').hasMatch(host)) {
+      final fallback = uri!.replace(host: 'img.komiku.org').toString();
+      if (fallback != raw) out.add(fallback);
     }
     return out;
   }
@@ -246,10 +266,10 @@ class Parser {
       ).firstMatch(b);
       final synM = RegExp(r'<p>\s*(.*?)\s*</p>', dotAll: true).firstMatch(b);
       final firstM = RegExp(
-        r'href="/([a-z0-9\-]+-chapter-[\d\.]+)/"[^>]*><span>Awal:',
+        r'href="/([a-z0-9\-]+-chapter-[\d\.]+)/"[^>]*>\s*<span>\s*Awal:',
       ).firstMatch(b);
       final lastM = RegExp(
-        r'href="/([a-z0-9\-]+-chapter-[\d\.]+)/"[^>]*><span>Terbaru:',
+        r'href="/([a-z0-9\-]+-chapter-[\d\.]+)/"[^>]*>\s*<span>\s*Terbaru:',
       ).firstMatch(b);
 
       final type = typeM == null ? '' : clean(typeM.group(1)!);
@@ -414,7 +434,8 @@ class Parser {
   static ChapterPages parseChapter(String chSlug, String html) {
     final tM = RegExp(r'<title>([^<]+)</title>').firstMatch(html);
     final re = RegExp(
-      'https://image\\d+\\.komiku\\.(?:to|org|com)/[^\\s"\'<>]+?\\.(?:webp|jpg|jpeg|png)',
+      'https://(?:image\\d+|img)\\.komiku\\.(?:to|org|com)/[^\\s"\'<>]+?\\.(?:webp|jpg|jpeg|png)',
+      caseSensitive: false,
     );
     final urls = <String>[];
     final seen = <String>{};

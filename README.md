@@ -7,7 +7,7 @@ Aplikasi pembaca komik Android berbasis Flutter dengan antarmuka bergaya iOS (Cu
 - Beranda: peringkat harian, peringkat mingguan, komik terbaru, baru ditambahkan, dan umpak genre
 - Populer: peringkat lengkap (lebih dari 350 judul)
 - Jelajah: katalog dengan filter tipe (Manga / Manhwa / Manhua), 98 genre, status (Ongoing / Tamat), pengurutan, dan pemuatan tanpa batas (infinite scroll)
-- Cari: pencarian judul dan chapter (hasil chapter dapat dibuka langsung)
+- Cari: pencarian khusus judul komik dengan cover (hasil tidak bercampur posting chapter)
 - Favorit: simpan komik favorit dan riwayat baca untuk melanjutkan
 - Detail series: sinopsis, status, rating, genre, dan daftar chapter (terbaru di atas) dengan pencarian chapter
 - Reader: gulir vertikal berkelanjutan, bilah atas/bawah otomatis tersembunyi, indikator kemajuan, navigasi chapter sebelumnya/berikutnya, dan pemulihan otomatis bila satu halaman gagal dimuat

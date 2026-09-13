@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
       SliverToBoxAdapter(child: SectionHeader(title: 'Peringkat Harian')),
       SliverToBoxAdapter(
         child: SizedBox(
-          height: 212,
+          height: 258,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -118,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
       SliverToBoxAdapter(child: SectionHeader(title: 'Terbaru')),
       SliverToBoxAdapter(
         child: SizedBox(
-          height: 212,
+          height: 258,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -160,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: CupertinoIcons.clock,
                 ),
                 SizedBox(
-                  height: 120,
+                  height: 88,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -361,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         SliverToBoxAdapter(
           child: SizedBox(
-            height: 220,
+            height: 266,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),

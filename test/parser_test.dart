@@ -81,6 +81,23 @@ void main() {
     });
   });
 
+  group('Parser.chapterImageCandidates', () {
+    test('menambahkan fallback img.komiku.org untuk CDN bernomor', () {
+      final candidates = Parser.chapterImageCandidates(
+        'https://image7.komiku.to/upload5/komik/12/halaman.webp',
+      );
+      expect(candidates, [
+        'https://image7.komiku.to/upload5/komik/12/halaman.webp',
+        'https://img.komiku.org/upload5/komik/12/halaman.webp',
+      ]);
+    });
+
+    test('tidak menduplikasi host img.komiku.org', () {
+      const url = 'https://img.komiku.org/upload5/komik/12/halaman.webp';
+      expect(Parser.chapterImageCandidates(url), [url]);
+    });
+  });
+
   group('Parser.parseBrowse', () {
     const html = '''
 <div class="bge">
@@ -142,6 +159,43 @@ void main() {
     });
   });
 
+  group('Parser.parseBrowse untuk pencarian', () {
+    test('menerima href series relatif dari endpoint pencarian', () {
+      const html = '''
+<div class="bge">
+  <div class="bgei">
+    <a href="/manga/sakamoto-days/">
+      <img src="https://thumbnail.komiku.org/uploads/manga/sakamoto-days/cover.jpg" class="lazy sd rd">
+      <div class="tpe1_inf"><b>Manga</b> Komedi</div>
+    </a>
+  </div>
+  <div class="kan">
+    <a href="/manga/sakamoto-days/"><h3>Sakamoto Days</h3></a>
+    <p>Update 11 jam lalu.</p>
+    <div class="new1">
+      <a href="/sakamoto-days-chapter-01/">
+        <span>Awal: </span><span>Chapter 01</span>
+      </a>
+    </div>
+    <div class="new1">
+      <a href="/sakamoto-days-chapter-274/">
+        <span>Terbaru: </span><span>Chapter 274</span>
+      </a>
+    </div>
+  </div>
+</div>
+''';
+      final cards = Parser.parseBrowse(html).cards;
+      expect(cards, hasLength(1));
+      expect(cards.single.slug, 'manga/sakamoto-days');
+      expect(cards.single.title, 'Sakamoto Days');
+      expect(cards.single.type, 'Manga');
+      expect(cards.single.genre, 'Komedi');
+      expect(cards.single.firstChapterSlug, 'sakamoto-days-chapter-01');
+      expect(cards.single.lastChapterSlug, 'sakamoto-days-chapter-274');
+    });
+  });
+
   group('Parser.parseChapter', () {
     const html = '''
 <title>From Goblin to Goblin God Chapter 123 - Komiku</title>
@@ -150,6 +204,7 @@ void main() {
 <img src="https://image2.komiku.to/upload5/from-goblin-to-goblin-god/123/2026-09-04/2_part1.webp">
 <img src="https://image3.komiku.to/upload5/from-goblin-to-goblin-god/123/2026-09-04/2_part2.webp">
 <img src="https://image3.komiku.to/upload5/from-goblin-to-goblin-god/123/2026-09-04/2_part1.webp">
+<img src="https://img.komiku.org/upload5/from-goblin-to-goblin-god/123/2026-09-04/3.webp">
 ''';
 
     test('memfilter promo & duplikat, menjaga urutan', () {
@@ -157,20 +212,17 @@ void main() {
         'from-goblin-to-goblin-god-chapter-123',
         html,
       );
-      // 4 URL unik (host image2/image3 berbeda = bukan duplikat).
-      expect(p.pages.length, 4);
+      // Lima URL unik, termasuk host pusat img.komiku.org.
+      expect(p.pages.length, 5);
       expect(
         p.pages.first,
         'https://image2.komiku.to/upload5/from-goblin-to-goblin-god/123/2026-09-04/1.webp',
       );
       expect(
         p.pages.last,
-        'https://image3.komiku.to/upload5/from-goblin-to-goblin-god/123/2026-09-04/2_part1.webp',
+        'https://img.komiku.org/upload5/from-goblin-to-goblin-god/123/2026-09-04/3.webp',
       );
-      expect(
-        p.pages.where((u) => u.contains('promosi')).isEmpty,
-        isTrue,
-      );
+      expect(p.pages.where((u) => u.contains('promosi')).isEmpty, isTrue);
       expect(p.title, 'From Goblin to Goblin God Chapter 123 - Komiku');
     });
   });

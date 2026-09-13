@@ -37,16 +37,26 @@ class _SeriesScreenState extends State<SeriesScreen> {
   @override
   void initState() {
     super.initState();
+    _chQuery.addListener(_onChapterQueryChanged);
     _load();
   }
 
   @override
   void dispose() {
+    _chQuery.removeListener(_onChapterQueryChanged);
     _chQuery.dispose();
     super.dispose();
   }
 
+  void _onChapterQueryChanged() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final info = await _client.series(widget.slug);
       if (!mounted) return;
@@ -105,9 +115,9 @@ class _SeriesScreenState extends State<SeriesScreen> {
     final initial = widget.initial;
     final title = info?.title ?? initial?.title ?? '';
 
-    return Scaffold(
+    return CupertinoPageScaffold(
       backgroundColor: ctx.bg,
-      body: CustomScrollView(
+      child: CustomScrollView(
         physics: iosPhysics,
         slivers: [
           CupertinoSliverNavigationBar(

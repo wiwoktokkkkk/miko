@@ -86,10 +86,6 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun securityFailureReason(): String? {
-        // Debug build tetap dapat digunakan untuk pengembangan lokal. Nilai ini
-        // dikompilasi false pada APK release dan tidak berasal dari manifest.
-        if (BuildConfig.DEBUG) return null
-
         if (!hasExpectedSignature()) return "signature"
         if (isDebuggerOrTracerAttached()) return "debugger"
         if (isEmulator()) return "emulator"
@@ -125,7 +121,7 @@ class MainActivity : FlutterActivity() {
                     signingInfo.signingCertificateHistory
                 }
             } else {
-                info.signatures
+                info.signatures ?: return false
             }
             signatures.any { signature ->
                 val digest = MessageDigest.getInstance("SHA-256")

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'src/app.dart';
+import 'src/security/security_service.dart';
 import 'src/state/app_store.dart';
 
 Future<void> main() async {
@@ -18,6 +19,7 @@ Future<void> main() async {
         : null,
   );
 
+  await SecurityService.instance.refresh();
   await AppStore.init();
   runApp(const MikoApp());
 }

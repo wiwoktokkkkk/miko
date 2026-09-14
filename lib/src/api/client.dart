@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 
 import '../models.dart';
+import '../security/security_service.dart';
 import 'parser.dart';
 
 /// Klien jaringan untuk endpoint publik komiku.org.
@@ -30,6 +31,7 @@ class KomikuClient {
   // HTTP dasar + cache TTL
   // ------------------------------------------------------------------
   Future<String> _get(String url) async {
+    await SecurityService.instance.ensureNetworkAllowed();
     final req = http.Request('GET', Uri.parse(url))
       ..headers.addAll(httpHeaders);
     final streamed = await _http.send(req).timeout(const Duration(seconds: 45));
